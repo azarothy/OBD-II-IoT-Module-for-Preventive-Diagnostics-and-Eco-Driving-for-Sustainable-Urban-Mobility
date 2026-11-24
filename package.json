@@ -1,0 +1,20 @@
+{
+  "name": "obd2-iot-monitor",
+  "version": "2.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "ws": "^8.17.0"
+  },
+  "description": "Monitor IoT OBD-II para diagnostico preventivo e eco-conducao (ESP32 + Node.js + PostgreSQL)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.12"
+  }
+}

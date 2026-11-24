@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor OBD-II</title>
+<style>
+:root{--bg:#f5f7f6;--cd:#fff;--tx:#17211b;--mu:#66736b;--bd:#dfe5e1;--v:#1b8a4b;--a:#d98200;--r:#c62828;--c:#8a948e}
+@media(prefers-color-scheme:dark){:root{--bg:#101512;--cd:#18201b;--tx:#e7efe9;--mu:#93a39a;--bd:#27322b}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--cd)}
+h1{font-size:1.05rem;margin:0}nav{display:flex;gap:6px}
+nav button{border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:8px 14px;border-radius:99px;cursor:pointer;font-size:.9rem}
+nav button.on{background:var(--v);color:#fff;border-color:var(--v)}
+main{padding:16px;max-width:1200px;margin:auto}section{display:none}section.on{display:block}
+.pill{font-size:.75rem;padding:2px 9px;border-radius:99px;color:#fff;background:var(--c)}.pill:empty{display:none}.pill.sim{background:var(--a)}.pill.ok{background:var(--v)}.pill.bad{background:var(--r)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px}
+.card{background:var(--cd);border:1px solid var(--bd);border-left:6px solid var(--c);border-radius:10px;padding:12px}
+.card.verde{border-left-color:var(--v)}.card.amarelo{border-left-color:var(--a)}.card.vermelho{border-left-color:var(--r)}
+.card p{margin:4px 0;font-size:.9rem}.dica{color:var(--mu)}.big{font-size:1.8rem;font-weight:700}small,.mu{color:var(--mu)}
+.ban{padding:18px;border-radius:12px;color:#fff;font-size:1.3rem;font-weight:700;background:var(--c)}
+.ban.verde{background:var(--v)}.ban.amarelo{background:var(--a)}.ban.vermelho{background:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{padding:5px;border-bottom:1px solid var(--bd);text-align:left}.sc{overflow-x:auto}
+canvas{width:100%;height:130px;display:block}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px}
+input,button.b{padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--cd);color:var(--tx)}button.b{cursor:pointer;background:var(--v);color:#fff;border:0}
+.sim2{display:grid;grid-template-columns:2fr 1fr;gap:12px}@media(max-width:800px){.sim2{grid-template-columns:1fr}}
+svg .p{fill:var(--c);fill-opacity:.55;stroke:var(--tx);stroke-width:1.5;cursor:pointer}svg .p:hover{fill-opacity:.85}
+svg .p.normal{fill:var(--v)}svg .p.atencao{fill:var(--a)}svg .p.anomalia{fill:var(--r)}svg .p.sel{stroke-width:4;stroke:#2f6fdb}
+svg .b{fill:var(--cd);stroke:var(--tx);stroke-width:2}svg text{font-size:11px;fill:var(--tx);pointer-events:none}
+</style></head><body>
+<header><h1>Monitor OBD-II · Eco-Condução</h1>
+<nav><button data-t="cond" class="on">Condutor</button><button data-t="tec">Análise técnica</button><button data-t="simu">Simulador</button></nav>
+<span><span id="ws" class="pill">conectando</span> <span id="org" class="pill"></span></span></header>
+<main>
+<section id="cond" class="on"><div id="ban" class="ban">Aguardando dados...</div><div class="grid" id="cards"></div>
+<h3>Alertas recentes</h3><div class="card"><div class="sc"><table id="alC"></table></div></div></section>
+
+<section id="tec"><div class="grid" id="kpi"></div>
+<div class="grid"><div class="card"><small>RPM</small><canvas id="c1"></canvas></div><div class="card"><small>Velocidade (km/h)</small><canvas id="c2"></canvas></div>
+<div class="card"><small>Temperatura (°C)</small><canvas id="c3"></canvas></div><div class="card"><small>Tensão (V)</small><canvas id="c4"></canvas></div></div>
+<div class="row"><label>De<br><input type="datetime-local" id="de"></label><label>Até<br><input type="datetime-local" id="ate"></label>
+<button class="b" id="bq">Consultar período</button><button class="b" id="bl">Voltar ao tempo real</button>
+<button class="b" id="bs" style="background:var(--a)">Ligar simulação</button></div>
+<div class="grid"><div class="card"><b>Comunicação</b><div id="com" class="mu"></div></div>
+<div class="card"><b>Limites de referência</b><p class="mu">Temp ≥98 atenção, ≥105 crítico · RPM ≥4000 / ≥5500 · TPS ≥80 / ≥95 · Tensão &lt;13,0 / &lt;12,0 V</p></div></div>
+<h3>Leituras</h3><div class="card sc"><table id="tb"></table></div><h3>Alertas</h3><div class="card sc"><table id="alT"></table></div></section>
+
+<section id="simu"><div class="sim2"><div class="card"><svg viewBox="0 0 600 260" width="100%" id="car">
+<path class="b" d="M60 190 L60 150 Q70 130 120 125 L200 80 Q215 70 240 70 L360 70 Q385 70 400 90 L420 118 L545 125 Q575 130 575 160 L575 190 Z"/>
+<circle class="b" cx="170" cy="205" r="32"/><circle class="b" cx="470" cy="205" r="32"/>
+<rect class="p" data-c="catalisador" x="90" y="170" width="190" height="14"/><rect class="p" data-c="transmissao" x="300" y="165" width="120" height="22"/>
+<rect class="p" data-c="modulo" x="255" y="120" width="50" height="26"/><rect class="p" data-c="bateria" x="392" y="135" width="38" height="30"/>
+<rect class="p" data-c="motor" x="436" y="128" width="104" height="52"/><rect class="p" data-c="acelerador" x="436" y="100" width="50" height="22"/>
+<rect class="p" data-c="injecao" x="492" y="100" width="50" height="22"/><rect class="p" data-c="arrefecimento" x="546" y="132" width="20" height="48"/>
+<text x="95" y="163">escape</text><text x="330" y="160">transmissão</text><text x="257" y="116">módulo</text><text x="398" y="130">bat.</text><text x="465" y="158">motor</text><text x="440" y="96">acel.</text><text x="498" y="96">injeção</text><text x="500" y="250">frente →</text></svg>
+<p class="mu">Clique em uma peça. Verde = normal, laranja = atenção, vermelho = anomalia (último teste).</p></div>
+<div class="card"><h3 id="cn">Selecione um componente</h3><div id="ci" class="mu"></div><div id="cv"></div><button class="b" id="bt" style="display:none">Executar teste</button><div id="cr"></div></div></div>
+<h3>Testes registrados</h3><div class="card sc"><table id="tt"></table></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const api=async(p,o)=>{const r=await fetch(p,o);if(!r.ok)throw 0;return r.json()};
+const hh=t=>new Date(t*1000).toLocaleString("pt-BR"),NC={verde:"#1b8a4b",amarelo:"#d98200",vermelho:"#c62828"};
+let U=null,MODO="live",SIM=false,SEL=null,COMP={},LAST={},H=[];
+const INFO={motor:["Motor","Rotação medida pelo OBD-II (RPM)."],arrefecimento:["Arrefecimento","Temperatura do líquido do motor."],acelerador:["Borboleta","Posição da borboleta (TPS)."],
+bateria:["Bateria e carga","Tensão da bateria lida pelo adaptador (precisa do firmware atualizado)."],transmissao:["Transmissão","Relação RPM/velocidade (indica marcha adequada)."],
+modulo:["Módulo ESP32/OBD-II","Atualidade da comunicação com o protótipo."],catalisador:["Catalisador e escape","SEM sensor no protótipo: teste SIMULADO."],injecao:["Injeção eletrônica","SEM sensor no protótipo: teste SIMULADO."]};
+const REL={motor:["rpm"],arrefecimento:["temp"],acelerador:["tps"],bateria:["tensao"],transmissao:["rpm","vel"],modulo:["ts"]};
+$$("nav button").forEach(b=>b.onclick=()=>{$$("nav button").forEach(x=>x.classList.toggle("on",x==b));$$("section").forEach(s=>s.classList.toggle("on",s.id==b.dataset.t));draw()});
+function tab(rows,cols){return"<tr>"+cols.map(c=>`<th>${c[0]}</th>`).join("")+"</tr>"+rows.map(r=>"<tr>"+cols.map(c=>`<td>${c[1](r)??"-"}</td>`).join("")+"</tr>").join("")}
+const pill=o=>`<span class="pill ${o==="simulado"?"sim":"ok"}">${o}</span>`;
+function rCond(){if(!U||!U.ts)return;const velho=Date.now()/1e3-U.ts>15,av=U.avaliacao||[];
+ const p=av.some(a=>a.nivel==="vermelho")?"vermelho":av.some(a=>a.nivel==="amarelo")?"amarelo":"verde";
+ $("#ban").className="ban "+(velho?"":p);$("#ban").textContent=velho?"Sem dados recentes do protótipo":{verde:"Tudo certo com o veículo",amarelo:"Atenção: veja os avisos abaixo",vermelho:"Problema: veja o que fazer"}[p]+(U.origem==="simulado"?" (dados simulados)":"");
+ $("#cards").innerHTML=av.map(a=>`<div class="card ${velho?"":a.nivel}"><b>${a.nome}</b>${velho?" <small>(dado antigo)</small>":""}<div class="big">${a.valor}</div><p>${a.mensagem}</p>${a.dica?`<p class="dica">${a.dica}</p>`:""}</div>`).join("")+
+ `<div class="card"><b>Umidade</b><p>Sem sensor de umidade no protótipo atual.</p></div>`+(U.dtc?`<div class="card vermelho"><b>Códigos de falha</b><p>${U.dtc}</p></div>`:"")}
+function alr(a){const c=[["Hora",r=>hh(r.ts)],["Nível",r=>`<b style="color:${NC[r.nivel]}">${r.nivel}</b>`],["Aviso",r=>r.mensagem],["Origem",r=>pill(r.origem)]];$("#alC").innerHTML=tab(a.slice(0,8),c);$("#alT").innerHTML=tab(a,[...c.slice(0,3),["Sensor",r=>r.sensor],c[3]])}
+function ch(id,k,cor,mx){const cv=$(id),d=devicePixelRatio||1;cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;const g=cv.getContext("2d");g.scale(d,d);const W=cv.clientWidth,Hh=cv.clientHeight;g.clearRect(0,0,W,Hh);
+ const a=H.filter(s=>s[k]!=null);if(a.length<2)return;const m=mx||Math.max(...a.map(s=>s[k]))*1.1||1;g.strokeStyle=cor;g.lineWidth=2;g.beginPath();
+ a.forEach((s,i)=>{const x=i/(a.length-1)*W,y=Hh-Math.min(s[k],m)/m*(Hh-6)-3;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()}
+function rTec(){if(U&&U.ts){const A=Object.fromEntries((U.avaliacao||[]).map(a=>[a.sensor,a]));
+ const k=(n,v,s)=>`<div class="card ${A[s]?A[s].nivel:""}"><small>${n}</small><div class="big">${v??"-"}</div></div>`;
+ $("#kpi").innerHTML=k("RPM",U.rpm,"rpm")+k("km/h",U.vel)+k("Temp °C",U.temp,"temp")+k("TPS %",U.tps,"tps")+k("Tensão V",U.tensao!=null?Number(U.tensao).toFixed(1):null,"tensao")+k("Score",U.score)+k("DTC",U.dtc||"nenhum")}
+ ch("#c1","rpm","#1b8a4b",6000);ch("#c2","vel","#2f6fdb",140);ch("#c3","temp","#d98200",120);ch("#c4","tensao","#8a3fd1",16);
+ $("#tb").innerHTML=tab(H.slice(-15).reverse(),[["Hora",r=>hh(r.ts)],["RPM",r=>r.rpm],["km/h",r=>r.vel],["°C",r=>r.temp],["TPS",r=>r.tps],["V",r=>r.tensao],["Score",r=>r.score],["Origem",r=>pill(r.origem)]])}
+async function com(){try{const s=await api("/api/status");SIM=s.simulacao;$("#bs").textContent=SIM?"Desligar simulação":"Ligar simulação";
+ $("#com").innerHTML=`Última leitura: ${s.ultima?hh(s.ultima.ts)+" ("+s.ultima.origem+")":"nenhuma"}<br>Há ${s.ultima?s.agora-s.ultima.ts:"-"} s · leituras reais no último minuto: ${s.reais_ultimo_minuto}<br>Simulação: ${s.simulacao?"LIGADA":"desligada"} · clientes ao vivo: ${s.clientes_ws}`}catch(e){}}
+function rSim(){$$("#car .p").forEach(e=>e.classList.toggle("sel",e.dataset.c===SEL));
+ if(!SEL)return;$("#cn").textContent=INFO[SEL][0];$("#ci").textContent=INFO[SEL][1];$("#bt").style.display="";
+ $("#cv").innerHTML=(REL[SEL]||[]).map(k=>`<p>${k==="ts"?"Última leitura":k}: <b>${U?(k==="ts"?(Math.round(Date.now()/1e3-U.ts)+" s atrás"):U[k]):"-"}</b></p>`).join("")}
+function paint(){$$("#car .p").forEach(e=>{e.classList.remove("normal","atencao","anomalia");const t=LAST[e.dataset.c];if(t)e.classList.add(t.status)})}
+function rTest(t){return`<b>${t.status.replace("_"," ")}</b> ${pill(t.origem)}<p class="mu">${JSON.stringify(t.detalhes)}</p>`}
+async function tests(){const t=await api("/api/testes");LAST={};t.slice().reverse().forEach(x=>LAST[x.componente]=x);paint();$("#tt").innerHTML=tab(t,[["Hora",r=>hh(r.ts)],["Componente",r=>r.nome],["Status",r=>r.status],["Origem",r=>pill(r.origem)],["Detalhes",r=>JSON.stringify(r.detalhes)]])}
+$$("#car .p").forEach(e=>e.onclick=()=>{SEL=e.dataset.c;$("#cr").innerHTML="";rSim()});
+$("#bt").onclick=async()=>{const t=await api("/api/testes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({componente:SEL})});$("#cr").innerHTML=rTest(t);tests()};
+$("#bs").onclick=async()=>{await api("/api/simulacao",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ativo:!SIM})});com()};
+$("#bq").onclick=async()=>{const d=$("#de").value,a=$("#ate").value;if(!d||!a)return;MODO="hist";
+ H=await api(`/api/amostras?limit=2000&de=${new Date(d).toISOString()}&ate=${new Date(a).toISOString()}`);rTec()};
+$("#bl").onclick=()=>{MODO="live";load()};
+function draw(){rCond();rTec();rSim()}
+async function load(){U=await api("/api/ultimo");if(MODO==="live")H=await api("/api/amostras?limit=120");alr(await api("/api/alertas"));draw()}
+function ws(){const s=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
+ s.onopen=()=>{$("#ws").textContent="ao vivo";$("#ws").className="pill ok"};s.onclose=()=>{$("#ws").textContent="reconectando";$("#ws").className="pill bad";setTimeout(ws,3000)};
+ s.onmessage=e=>{const m=JSON.parse(e.data);if(m.tipo==="amostra"){U=m.dados;$("#org").textContent=U.origem;$("#org").className="pill "+(U.origem==="simulado"?"sim":"ok");
+  if(MODO==="live"){H.push(U);if(H.length>120)H.shift()}draw()}else if(m.tipo==="alerta")api("/api/alertas").then(alr);else if(m.tipo==="teste")tests()}}
+load();tests();com();ws();setInterval(com,5000);setInterval(()=>{if(MODO==="live")load()},15000);addEventListener("resize",draw);
+</script></body></html>
